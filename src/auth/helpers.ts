@@ -1,40 +1,24 @@
-import { Context } from 'hono';
-import { env } from '../env';
-import { verify } from 'hono/jwt';
+import crypto from 'crypto';
 
-async function getRequestAudience(c: Context) {
-  let aud = c.req.header('X-JWT-AUD');
-  if (aud) {
-    return aud;
-  }
-
-  const claims = await getClaims(c);
-  if (claims) {
-    aud = claims.aud as string;
-    if (aud) {
-      return aud;
-    }
-  }
-
-  return env.JWT_AUD;
+function hashPassword(password: string, salt: string): Promise<string> {
+    return new Promise((res, rej) => {
+        crypto.scrypt(password, salt, 64, (err, hash) => {
+            if (err) rej(err);
+            res(hash.toString('hex'));
+        });
+    });
 }
 
-async function getClaims(c: Context) {
-  const token = getToken(c);
-  if (!token) {
-    return null;
-  }
-  const jwtPayload = await verify(token, env.JWT_SECRET);
-  return jwtPayload;
+async function comparePassword(password: string, salt: string, hashedPassword: string) {
+    const inputHashedPassword = await hashPassword(password, salt);
+    return crypto.timingSafeEqual(
+        Buffer.from(inputHashedPassword, 'hex'),
+        Buffer.from(hashedPassword, 'hex'),
+    );
 }
 
-function getToken(c: Context) {
-  const token = c.get('jwtToken') as string;
-  if (!token) {
-    return null;
-  }
-
-  return token;
+function generateSalt() {
+    return crypto.randomBytes(16).toString('hex');
 }
 
-export { getRequestAudience };
+export { hashPassword, comparePassword, generateSalt };

@@ -1,22 +1,33 @@
 import { createMiddleware } from 'hono/factory';
 import { jwt } from 'hono/jwt';
-import { tokenSchema } from './schema';
+import { registerSchema, tokenSchema } from './schema';
 import { Context } from 'hono';
-import { TokenRequest } from './types';
+import { PasswordTokenRequest, RefreshTokenRequest } from './types';
+import { env } from '../env';
 
 const jwtAuth = createMiddleware(async (c, next) => {
-  const jwtMiddleware = jwt({
-    secret: c.env.JWT_SECRET,
-  });
-  return jwtMiddleware(c, next);
+    const jwtMiddleware = jwt({
+        secret: env.JWT_SECRET,
+    });
+    return jwtMiddleware(c, next);
 });
 
-const validateTokenRequest = (value: TokenRequest, c: Context) => {
-  const parsed = tokenSchema.safeParse(value);
-  if (!parsed.success) {
-    return c.json(parsed.error, 400);
-  }
-  return parsed.data;
-};
+type AuthRequest = PasswordTokenRequest | RefreshTokenRequest;
 
-export { jwtAuth, validateTokenRequest };
+function validateTokenRequest(value: AuthRequest, c: Context) {
+    const parsed = tokenSchema.safeParse(value);
+    if (!parsed.success) {
+        return c.json(parsed.error, 400);
+    }
+    return parsed.data;
+}
+
+function validateSignupRequest(value: AuthRequest, c: Context) {
+    const parsed = registerSchema.safeParse(value);
+    if (!parsed.success) {
+        return c.json(parsed.error, 400);
+    }
+    return parsed.data;
+}
+
+export { jwtAuth, validateTokenRequest, validateSignupRequest };
