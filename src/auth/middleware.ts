@@ -1,9 +1,10 @@
-import { createMiddleware } from 'hono/factory';
-import { jwt } from 'hono/jwt';
-import { registerSchema, tokenSchema } from './schema';
 import { Context } from 'hono';
+import { createMiddleware } from 'hono/factory';
+import { HTTPException } from 'hono/http-exception';
+import { jwt } from 'hono/jwt';
+import { env } from '~/env';
+import { getTokenSchema, registerSchema } from './schema';
 import { PasswordTokenRequest, RefreshTokenRequest } from './types';
-import { env } from '../env';
 
 const jwtAuth = createMiddleware(async (c, next) => {
     const jwtMiddleware = jwt({
@@ -14,20 +15,24 @@ const jwtAuth = createMiddleware(async (c, next) => {
 
 type AuthRequest = PasswordTokenRequest | RefreshTokenRequest;
 
-function validateTokenRequest(value: AuthRequest, c: Context) {
-    const parsed = tokenSchema.safeParse(value);
+function validateSignupRequest(body: AuthRequest) {
+    const parsed = registerSchema.safeParse(body);
     if (!parsed.success) {
-        return c.json(parsed.error, 400);
+        const message = parsed.error.issues.map((issue) => issue.message).join('; ');
+        throw new HTTPException(400, { message, cause: parsed.error });
     }
     return parsed.data;
 }
 
-function validateSignupRequest(value: AuthRequest, c: Context) {
-    const parsed = registerSchema.safeParse(value);
+function validateTokenRequest(body: AuthRequest, c: Context) {
+    const grantType = c.req.query('grant_type') || 'password';
+    const tokenSchema = getTokenSchema(grantType);
+    const parsed = tokenSchema.safeParse(body);
     if (!parsed.success) {
-        return c.json(parsed.error, 400);
+        const message = parsed.error.issues.map((issue) => issue.message).join('; ');
+        throw new HTTPException(400, { message, cause: parsed.error });
     }
     return parsed.data;
 }
 
-export { jwtAuth, validateTokenRequest, validateSignupRequest };
+export { jwtAuth, validateSignupRequest, validateTokenRequest };

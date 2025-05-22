@@ -1,14 +1,15 @@
 {
-  "name": "hono-api",
-  "scripts": {
-    "dev": "bun run --hot src/index.ts"
-  },
-  "dependencies": {
-    "@t3-oss/env-core": "^0.13.4",
-    "hono": "^4.7.10",
-    "zod": "^3.25.17"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
-  }
+    "name": "hono-api",
+    "scripts": {
+        "dev": "bun run --hot src/index.ts"
+    },
+    "dependencies": {
+        "@t3-oss/env-core": "^0.13.4",
+        "hono": "^4.7.10",
+        "hono-rate-limiter": "^0.4.2",
+        "zod": "^3.25.17"
+    },
+    "devDependencies": {
+        "@types/bun": "latest"
+    }
 }

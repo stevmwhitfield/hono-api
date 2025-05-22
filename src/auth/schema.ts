@@ -1,24 +1,43 @@
 import { z } from 'zod';
 
 const passwordGrantSchema = z.object({
-    grant_type: z.literal('password'),
-    email: z.string().email(),
-    password: z.string().min(1),
+    email: z
+        .string({ message: 'email must be a non-empty string' })
+        .email('email must be a valid format'),
+    password: z.string().min(8, 'password must be at least 8 characters'),
 });
 
 const refreshTokenGrantSchema = z.object({
-    grant_type: z.literal('refresh_token'),
-    refresh_token: z.string().min(1),
+    refresh_token: z
+        .string({ message: 'refresh_token must be a non-empty string' })
+        .uuid('refresh_token must be a valid format'),
 });
-
-const tokenSchema = z.discriminatedUnion('grant_type', [
-    passwordGrantSchema,
-    refreshTokenGrantSchema,
-]);
 
 const registerSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(8),
+    email: z
+        .string({ message: 'email must be a non-empty string' })
+        .email('email must be a valid format'),
+    password: z
+        .string({ message: 'password must be a non-empty string' })
+        .min(8, 'password must be at least 8 characters')
+        .refine((v) => /[a-z]/.test(v), 'password must contain at least one lowercase letter')
+        .refine((v) => /[A-Z]/.test(v), 'password must contain at least one uppercase letter')
+        .refine((v) => /[0-9]/.test(v), 'password must contain at least one number')
+        .refine(
+            (v) => /[-._!"`'#%&,:;<>=@{}~\$\(\)\*\+\/\\\?\[\]\^\|]+/.test(v),
+            'password must contain at least one special character',
+        ),
 });
 
-export { tokenSchema, registerSchema };
+function getTokenSchema(grantType: string) {
+    switch (grantType) {
+        case 'password':
+            return passwordGrantSchema;
+        case 'refresh_token':
+            return refreshTokenGrantSchema;
+        default:
+            throw new Error('invalid grant_type');
+    }
+}
+
+export { passwordGrantSchema, refreshTokenGrantSchema, registerSchema, getTokenSchema };

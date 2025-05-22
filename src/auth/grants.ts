@@ -1,18 +1,18 @@
 import { Context } from 'hono';
-import { db } from '../db/mock';
+import { db } from '~/db/db';
 import { comparePassword } from './helpers';
 import { generateTokens } from './token';
-import { verify } from 'hono/jwt';
+import { HTTPException } from 'hono/http-exception';
 
 async function passwordGrant(c: Context, email: string, password: string) {
     const user = await db.findUserByEmail(email);
     if (!user) {
-        return c.json({ message: 'user not found' }, 404);
+        throw new HTTPException(404, { message: 'user not found' });
     }
 
     const isValidPassword = await comparePassword(password, user.salt, user.password_hash);
     if (!isValidPassword) {
-        return c.json({ message: 'invalid credentials' }, 400);
+        throw new HTTPException(400, { message: 'invalid credentials' });
     }
 
     const { accessToken, refreshToken } = await generateTokens(user);
@@ -26,14 +26,20 @@ async function passwordGrant(c: Context, email: string, password: string) {
 }
 
 async function refreshTokenGrant(c: Context, refreshToken: string) {
-    const jwtPayload = await verify(refreshToken, c.env.JWT_SECRET);
-    if (!jwtPayload || !jwtPayload.sub) {
-        return c.json({ message: 'invalid refresh token' }, 401);
+    const token = await db.findRefreshTokenById(refreshToken);
+    console.log('refreshTokenGrant: token', token);
+    if (!token || token.is_revoked) {
+        throw new HTTPException(401, { message: 'invalid refresh token' });
     }
 
-    const user = await db.findUserById(jwtPayload.sub as string);
+    if (token.expires_at < new Date()) {
+        await db.revokeRefreshTokenById(refreshToken);
+        throw new HTTPException(401, { message: 'refresh token expired' });
+    }
+
+    const user = await db.findUserById(token.user_id);
     if (!user) {
-        return c.json({ message: 'user not found' }, 404);
+        throw new HTTPException(404, { message: 'user not found' });
     }
 
     const { accessToken, refreshToken: newRefreshToken } = await generateTokens(user);
