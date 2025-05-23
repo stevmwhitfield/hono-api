@@ -4,6 +4,7 @@ import { z } from 'zod';
 const env = createEnv({
     server: {
         NODE_ENV: z.enum(['development', 'production']),
+        LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']),
         PORT: z.coerce.number().min(1000).max(65535),
         JWT_SECRET: z.string().base64(),
         JWT_EXP: z.coerce.number().min(1).max(3600),

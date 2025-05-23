@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { JwtVariables } from 'hono/jwt';
 import { jwtAuth } from '~/auth/middleware';
-import { db } from '~/db/db';
+import { userRepo } from '~/db/user.repo';
 
 type Variables = JwtVariables;
 
@@ -19,7 +19,7 @@ demo.get('/me', async (c) => {
         throw new HTTPException(401, { message: 'invalid token' });
     }
 
-    const user = await db.findUserById(jwtPayload.sub);
+    const user = await userRepo.findUserById(jwtPayload.sub);
     if (!user) {
         throw new HTTPException(404, { message: 'user not found' });
     }
