@@ -17,8 +17,8 @@ class DB {
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 salt TEXT NOT NULL,
-                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
         `);
         this.db.run(`
@@ -26,8 +26,8 @@ class DB {
                 id TEXT PRIMARY KEY,
                 user_id TEXT NOT NULL,
                 user_email TEXT NOT NULL,
-                issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                expires_at DATETIME NOT NULL,
+                issued_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                expires_at TEXT NOT NULL,
                 is_revoked BOOLEAN NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
@@ -62,13 +62,7 @@ class DB {
             INSERT INTO refresh_tokens (id, user_id, user_email, expires_at, is_revoked)
             VALUES (?, ?, ?, ?, ?)
         `);
-        stmt.get(
-            token.id,
-            token.user_id,
-            token.user_email,
-            token.expires_at.toISOString(),
-            token.is_revoked,
-        );
+        stmt.run(token.id, token.user_id, token.user_email, token.expires_at, token.is_revoked);
     }
 
     async findRefreshTokenById(id: string): Promise<RefreshToken | null> {
@@ -87,7 +81,7 @@ class DB {
     }
 
     async cleanupExpiredRefreshTokens(): Promise<void> {
-        this.db.run('DELETE FROM refresh_tokens WHERE expires_at < datetime("now")');
+        this.db.run('DELETE FROM refresh_tokens WHERE datetime(expires_at) < datetime("now")');
     }
 
     async cleanupRevokedRefreshTokens(): Promise<void> {

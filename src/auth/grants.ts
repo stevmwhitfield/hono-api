@@ -15,6 +15,8 @@ async function passwordGrant(c: Context, email: string, password: string) {
         throw new HTTPException(400, { message: 'invalid credentials' });
     }
 
+    await db.revokeAllRefreshTokensForUser(user.id);
+
     const { accessToken, refreshToken } = await generateTokens(user);
 
     return c.json({
@@ -27,12 +29,11 @@ async function passwordGrant(c: Context, email: string, password: string) {
 
 async function refreshTokenGrant(c: Context, refreshToken: string) {
     const token = await db.findRefreshTokenById(refreshToken);
-    console.log('refreshTokenGrant: token', token);
     if (!token || token.is_revoked) {
         throw new HTTPException(401, { message: 'invalid refresh token' });
     }
 
-    if (token.expires_at < new Date()) {
+    if (new Date(token.expires_at) < new Date()) {
         await db.revokeRefreshTokenById(refreshToken);
         throw new HTTPException(401, { message: 'refresh token expired' });
     }
@@ -41,6 +42,8 @@ async function refreshTokenGrant(c: Context, refreshToken: string) {
     if (!user) {
         throw new HTTPException(404, { message: 'user not found' });
     }
+
+    await db.revokeAllRefreshTokensForUser(user.id);
 
     const { accessToken, refreshToken: newRefreshToken } = await generateTokens(user);
 

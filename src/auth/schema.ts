@@ -4,7 +4,9 @@ const passwordGrantSchema = z.object({
     email: z
         .string({ message: 'email must be a non-empty string' })
         .email('email must be a valid format'),
-    password: z.string().min(8, 'password must be at least 8 characters'),
+    password: z
+        .string({ message: 'password must be a non-empty string' })
+        .min(8, 'password must be at least 8 characters'),
 });
 
 const refreshTokenGrantSchema = z.object({

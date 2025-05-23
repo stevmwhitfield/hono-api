@@ -8,7 +8,7 @@ import { passwordGrant, refreshTokenGrant } from './grants';
 import { generateSalt, hashPassword } from './helpers';
 import { jwtAuth, validateSignupRequest, validateTokenRequest } from './middleware';
 import { generateTokens } from './token';
-import { PasswordTokenRequest, RefreshTokenRequest } from './types';
+import type { PasswordTokenRequest, RefreshTokenRequest } from './types';
 
 const auth = new Hono();
 
@@ -65,7 +65,6 @@ auth.post('/token', validator('json', validateTokenRequest), async (c) => {
                 return passwordGrant(c, email, password);
             case 'refresh_token':
                 const { refresh_token: refreshToken } = (await c.req.json()) as RefreshTokenRequest;
-                console.log('/token: refreshToken', refreshToken);
                 return refreshTokenGrant(c, refreshToken);
             default:
                 throw new HTTPException(400, { message: 'unsupported grant_type' });
