@@ -3,6 +3,7 @@ import { db } from '~/db/db';
 import { comparePassword } from './helpers';
 import { generateTokens } from './token';
 import { HTTPException } from 'hono/http-exception';
+import { env } from '~/env';
 
 async function passwordGrant(c: Context, email: string, password: string) {
     const user = await db.findUserByEmail(email);
@@ -22,7 +23,7 @@ async function passwordGrant(c: Context, email: string, password: string) {
     return c.json({
         access_token: accessToken,
         token_type: 'bearer',
-        expires_in: 900,
+        expires_in: env.JWT_EXP,
         refresh_token: refreshToken,
     });
 }
@@ -50,7 +51,7 @@ async function refreshTokenGrant(c: Context, refreshToken: string) {
     return c.json({
         access_token: accessToken,
         token_type: 'bearer',
-        expires_in: 900,
+        expires_in: env.JWT_EXP,
         refresh_token: newRefreshToken,
     });
 }

@@ -4,8 +4,10 @@ import { db } from '~/db/db';
 import type { User } from '~/db/types';
 import { env } from '~/env';
 
+const REFRESH_EXP = 604800 * 1000; // 7 days (ms)
+
 async function generateTokens(user: User) {
-    const now = Math.floor(Date.now() / 1000);
+    const now = Math.floor(Date.now() / 1000); // seconds
     const payload = {
         sub: user.id,
         email: user.email,
@@ -17,11 +19,13 @@ async function generateTokens(user: User) {
     );
 
     const refreshToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + REFRESH_EXP).toISOString();
+
     await db.createRefreshToken({
         id: refreshToken,
         user_id: user.id,
         user_email: user.email,
-        expires_at: new Date(Date.now() + 604800).toISOString(), // 7 days
+        expires_at: expiresAt,
         is_revoked: false,
     });
 
