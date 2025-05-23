@@ -1,14 +1,17 @@
+import { sql } from 'drizzle-orm';
 import { Context, Hono } from 'hono';
-import { PinoLogger, pinoLogger } from 'hono-pino';
+import { PinoLogger } from 'hono-pino';
 import { rateLimiter } from 'hono-rate-limiter';
 import { cors } from 'hono/cors';
 import { csrf } from 'hono/csrf';
 import { HTTPException } from 'hono/http-exception';
 import { secureHeaders } from 'hono/secure-headers';
 import { auth } from './auth/routes';
-import { db } from './db/db';
+import { env } from './core/env';
+import { customLogger } from './core/logger';
+import { db } from './db';
 import { demo } from './demo/routes';
-import { env } from './env';
+import { refreshTokenRepo } from './db/refresh-token.repo';
 
 type Variables = { logger: PinoLogger };
 
@@ -21,7 +24,7 @@ const rateLimiterConfig = {
 
 // -- middleware --
 
-app.use(pinoLogger({ pino: { level: env.NODE_ENV === 'production' ? 'info' : 'debug' } }));
+app.use(customLogger());
 
 if (env.NODE_ENV === 'production') {
     app.use(csrf());
@@ -55,14 +58,32 @@ app.use(
 
 // -- routes --
 
-app.get('/health', (c) => {
-    return c.json({
-        message: 'ok',
-        timestamp: new Date().toISOString(),
-        environment: env.NODE_ENV,
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-    });
+app.get('/health', async (c) => {
+    try {
+        await db.execute(sql`SELECT 1`);
+        return c.json({
+            message: 'ok',
+            database: 'connected',
+            timestamp: new Date().toISOString(),
+            environment: env.NODE_ENV,
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+        });
+    } catch (err) {
+        console.error('health check failed:', err);
+        return c.json(
+            {
+                message: 'error',
+                database: 'connection failed',
+                error: err instanceof Error ? err.message : err,
+                timestamp: new Date().toISOString(),
+                environment: env.NODE_ENV,
+                uptime: process.uptime(),
+                memory: process.memoryUsage(),
+            },
+            503,
+        );
+    }
 });
 
 // public auth routes
@@ -89,15 +110,15 @@ app.notFound((c) => {
 // -- graceful shutdown --
 
 async function handleShutdown() {
-    console.log('Shutting down...');
+    console.log('\nShutting down...');
     try {
-        await Promise.all([db.cleanupExpiredRefreshTokens(), db.cleanupRevokedRefreshTokens()]);
-        console.log('Cleanup successful.');
+        await refreshTokenRepo.cleanupExpiredRefreshTokens();
+        await refreshTokenRepo.cleanupRevokedRefreshTokens();
+        console.log('Successfully cleaned up.');
     } catch (err) {
-        console.error('shutdown failed:', err);
+        console.error('error in shutdown:', err);
     } finally {
-        db.close();
-        console.log('Shutdown complete.');
+        console.log('Shutdown complete.\n');
         setTimeout(() => process.exit(0), 100);
     }
 }

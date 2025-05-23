@@ -2,8 +2,9 @@ import crypto from 'crypto';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { validator } from 'hono/validator';
-import { db } from '~/db/db';
-import { env } from '~/env';
+import { env } from '~/core/env';
+import { refreshTokenRepo } from '~/db/refresh-token.repo';
+import { userRepo } from '~/db/user.repo';
 import { passwordGrant, refreshTokenGrant } from './grants';
 import { generateSalt, hashPassword } from './helpers';
 import { jwtAuth, validateSignupRequest, validateTokenRequest } from './middleware';
@@ -19,16 +20,16 @@ auth.post('/signup', validator('json', validateSignupRequest), async (c) => {
             throw new HTTPException(400, { message: 'email is required' });
         }
 
-        const existingUser = await db.findUserByEmail(email);
+        const existingUser = await userRepo.findUserByEmail(email);
         if (existingUser) {
             throw new HTTPException(409, { message: 'user already exists with this email' });
         }
 
+        const userId = crypto.randomUUID();
         const salt = generateSalt();
         const hashedPassword = await hashPassword(password, salt);
 
-        const userId = crypto.randomUUID();
-        const user = await db.createUser({
+        const user = await userRepo.createUser({
             id: userId,
             email,
             password_hash: hashedPassword,
@@ -89,7 +90,8 @@ auth.post('/logout', jwtAuth, async (c) => {
         }
 
         const userId = jwtPayload.sub as string;
-        await db.revokeAllRefreshTokensForUser(userId);
+
+        await refreshTokenRepo.revokeAllRefreshTokensForUser(userId);
 
         return c.body(null, 204);
     } catch (err) {

@@ -1,12 +1,13 @@
 import { Context } from 'hono';
-import { db } from '~/db/db';
+import { HTTPException } from 'hono/http-exception';
+import { env } from '~/core/env';
+import { refreshTokenRepo } from '~/db/refresh-token.repo';
+import { userRepo } from '~/db/user.repo';
 import { comparePassword } from './helpers';
 import { generateTokens } from './token';
-import { HTTPException } from 'hono/http-exception';
-import { env } from '~/env';
 
 async function passwordGrant(c: Context, email: string, password: string) {
-    const user = await db.findUserByEmail(email);
+    const user = await userRepo.findUserByEmail(email);
     if (!user) {
         throw new HTTPException(404, { message: 'user not found' });
     }
@@ -16,7 +17,7 @@ async function passwordGrant(c: Context, email: string, password: string) {
         throw new HTTPException(400, { message: 'invalid credentials' });
     }
 
-    await db.revokeAllRefreshTokensForUser(user.id);
+    await refreshTokenRepo.revokeAllRefreshTokensForUser(user.id);
 
     const { accessToken, refreshToken } = await generateTokens(user);
 
@@ -29,22 +30,22 @@ async function passwordGrant(c: Context, email: string, password: string) {
 }
 
 async function refreshTokenGrant(c: Context, refreshToken: string) {
-    const token = await db.findRefreshTokenById(refreshToken);
+    const token = await refreshTokenRepo.findRefreshTokenById(refreshToken);
     if (!token || token.is_revoked) {
         throw new HTTPException(401, { message: 'invalid refresh token' });
     }
 
     if (new Date(token.expires_at) < new Date()) {
-        await db.revokeRefreshTokenById(refreshToken);
+        await refreshTokenRepo.revokeRefreshTokenById(refreshToken);
         throw new HTTPException(401, { message: 'refresh token expired' });
     }
 
-    const user = await db.findUserById(token.user_id);
+    const user = await userRepo.findUserById(token.user_id);
     if (!user) {
         throw new HTTPException(404, { message: 'user not found' });
     }
 
-    await db.revokeAllRefreshTokensForUser(user.id);
+    await refreshTokenRepo.revokeAllRefreshTokensForUser(user.id);
 
     const { accessToken, refreshToken: newRefreshToken } = await generateTokens(user);
 

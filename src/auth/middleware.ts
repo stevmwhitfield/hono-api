@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 import { jwt } from 'hono/jwt';
-import { env } from '~/env';
+import { env } from '~/core/env';
 import { getTokenSchema, registerSchema } from './schema';
 import { PasswordTokenRequest, RefreshTokenRequest } from './types';
 
