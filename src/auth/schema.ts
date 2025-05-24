@@ -22,11 +22,17 @@ const registerSchema = z.object({
     password: z
         .string({ message: 'password must be a non-empty string' })
         .min(8, 'password must be at least 8 characters')
-        .refine((v) => /[a-z]/.test(v), 'password must contain at least one lowercase letter')
-        .refine((v) => /[A-Z]/.test(v), 'password must contain at least one uppercase letter')
-        .refine((v) => /[0-9]/.test(v), 'password must contain at least one number')
         .refine(
-            (v) => /[-._!"`'#%&,:;<>=@{}~\$\(\)\*\+\/\\\?\[\]\^\|]+/.test(v),
+            (v: string) => /[a-z]/.test(v),
+            'password must contain at least one lowercase letter',
+        )
+        .refine(
+            (v: string) => /[A-Z]/.test(v),
+            'password must contain at least one uppercase letter',
+        )
+        .refine((v: string) => /[0-9]/.test(v), 'password must contain at least one number')
+        .refine(
+            (v: string) => /[-._!"`'#%&,:;<>=@{}~$()*+/\\?[\]^|]+/.test(v),
             'password must contain at least one special character',
         ),
 });

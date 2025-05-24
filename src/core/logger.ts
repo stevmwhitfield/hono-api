@@ -1,11 +1,12 @@
+import { hostname } from 'os';
 import { pinoLogger } from 'hono-pino';
-import pino from 'pino';
+import createPino, { stdSerializers, stdTimeFunctions } from 'pino';
 import { env } from './env';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const logLevel = env.LOG_LEVEL || (isProduction ? 'info' : 'debug');
 
-const baseLogger = pino({
+const baseLogger = createPino({
     level: logLevel,
     transport: isProduction
         ? undefined
@@ -19,11 +20,11 @@ const baseLogger = pino({
           },
     base: {
         pid: process.pid,
-        hostname: require('os').hostname(),
+        hostname: hostname(),
         service: 'hono-api',
         version: '1.0.0',
     },
-    timestamp: pino.stdTimeFunctions.isoTime,
+    timestamp: stdTimeFunctions.isoTime,
     redact: {
         paths: [
             'req.headers.authorization',
@@ -40,9 +41,9 @@ const baseLogger = pino({
 });
 
 const customSerializers = {
-    req: pino.stdSerializers.req,
-    res: pino.stdSerializers.res,
-    err: pino.stdSerializers.err,
+    req: stdSerializers.req,
+    res: stdSerializers.res,
+    err: stdSerializers.err,
 };
 
 const logger = baseLogger.child({}, { serializers: customSerializers });

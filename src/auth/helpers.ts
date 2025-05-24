@@ -1,10 +1,12 @@
 import crypto from 'crypto';
 
 function hashPassword(password: string, salt: string): Promise<string> {
-    return new Promise((res, rej) => {
+    return new Promise((resolve, reject) => {
         crypto.scrypt(password, salt, 64, (err, hash) => {
-            if (err) rej(err);
-            res(hash.toString('hex'));
+            if (err) {
+                reject(err);
+            }
+            resolve(hash.toString('hex'));
         });
     });
 }
